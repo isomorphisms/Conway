@@ -1,0 +1,23 @@
+# Inspired by Danny Calegari's "Laying train tracks" PostScript example.
+# Here the centerline is a composable sequence of 45-degree curved pieces.
+canvas 720 360
+viewport -180 -90 180 90
+background #ffffff
+stroke #222222 4
+
+motif felix_track
+    move -150 0
+    heading 0
+    arc_left 24 45
+    arc_left 24 45
+    arc_right 24 45
+    arc_right 24 45
+    arc_left 24 45
+    arc_right 24 45
+    arc_right 24 45
+    arc_right 24 45
+    arc_left 24 45
+    arc_right 24 45
+end
+
+draw felix_track

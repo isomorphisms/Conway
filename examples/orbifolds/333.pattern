@@ -1,0 +1,13 @@
+canvas 720 720
+viewport -360 -360 360 360
+background #f8f6ee
+stroke #252a2e 2
+motif seed
+    move 8 8
+    line 34 8
+    arc_left 13 90
+    line 21 34
+    circle 15 15 3
+end
+orbifold 333 84
+orbit seed
