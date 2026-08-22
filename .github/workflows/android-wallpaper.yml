@@ -15,7 +15,63 @@ env:
   SHADER_BACKEND_REF: 7876b79058d6f59711151a21697369c1cf72df2f
 
 jobs:
-  build:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out Conway
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android toolchain
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Check bundled wallpaper shader
+        run: |
+          test -s app/src/main/assets/conway-wallpaper.frag
+          grep -q 'uniform vec2 u_pan' app/src/main/assets/conway-wallpaper.frag
+          grep -q 'uniform float u_aspect' app/src/main/assets/conway-wallpaper.frag
+
+      - name: Build debug APK
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee android-build.log
+
+      - name: Upload Android build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conway-android-build-log
+          path: android-build.log
+          if-no-files-found: warn
+
+      - name: Verify APK contents
+        run: |
+          unzip -l app/build/outputs/apk/debug/app-debug.apk > "$RUNNER_TEMP/apk-files"
+          grep -q 'lib/arm64-v8a/libconway.so' "$RUNNER_TEMP/apk-files"
+          grep -q 'lib/armeabi-v7a/libconway.so' "$RUNNER_TEMP/apk-files"
+          grep -q 'lib/x86_64/libconway.so' "$RUNNER_TEMP/apk-files"
+          grep -q 'assets/conway-wallpaper.frag' "$RUNNER_TEMP/apk-files"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conway-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  shader-source:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -59,7 +115,7 @@ jobs:
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
           PATH="$HOME/.idris2/bin:$PATH" make -C shader-backend backend
 
-      - name: Down-compile Conway wallpaper
+      - name: Compile Conway wallpaper source
         shell: bash
         run: |
           set -euxo pipefail
@@ -74,56 +130,12 @@ jobs:
               -o conway-wallpaper
           )
           test -s shader-backend/generated/conway-wallpaper.frag
-          cp shader-backend/generated/conway-wallpaper.frag app/src/main/assets/conway-wallpaper.frag
-          glslangValidator -S frag app/src/main/assets/conway-wallpaper.frag
-          grep -q 'uniform vec2 u_pan' app/src/main/assets/conway-wallpaper.frag
-          grep -q 'uniform float u_aspect' app/src/main/assets/conway-wallpaper.frag
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: android-actions/setup-android@v3
-
-      - name: Install Android toolchain
-        run: |
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
-
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.5.0'
-
-      - name: Build debug APK
-        shell: bash
-        run: |
-          set -o pipefail
-          gradle --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee android-build.log
-
-      - name: Upload Android build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: conway-android-build-log
-          path: android-build.log
-          if-no-files-found: warn
-
-      - name: Verify native ABIs and generated shader
-        run: |
-          unzip -l app/build/outputs/apk/debug/app-debug.apk > "$RUNNER_TEMP/apk-files"
-          grep -q 'lib/arm64-v8a/libconway.so' "$RUNNER_TEMP/apk-files"
-          grep -q 'lib/armeabi-v7a/libconway.so' "$RUNNER_TEMP/apk-files"
-          grep -q 'lib/x86_64/libconway.so' "$RUNNER_TEMP/apk-files"
-          grep -q 'assets/conway-wallpaper.frag' "$RUNNER_TEMP/apk-files"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: conway-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          glslangValidator -S frag shader-backend/generated/conway-wallpaper.frag
+          grep -q 'uniform vec2 u_pan' shader-backend/generated/conway-wallpaper.frag
+          grep -q 'uniform float u_aspect' shader-backend/generated/conway-wallpaper.frag
 
   emulate:
-    needs: build
+    needs: apk
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
