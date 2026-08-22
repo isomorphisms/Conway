@@ -22,14 +22,6 @@ jobs:
       - name: Check out Conway
         uses: actions/checkout@v4
 
-      - name: Run float gesture tests
-        run: |
-          cc -std=c11 -Wall -Wextra -Wpedantic -Werror \
-            -Iapp/src/main/cpp \
-            app/src/main/cpp/gesture.c tests/gesture_test.c \
-            -lm -o "$RUNNER_TEMP/conway-gesture-test"
-          "$RUNNER_TEMP/conway-gesture-test"
-
       - name: Install compiler and shader dependencies
         run: |
           sudo apt-get update
@@ -72,7 +64,6 @@ jobs:
         run: |
           set -euxo pipefail
           cp shader/ConwayWallpaper.idric shader-backend/src/Example/ConwayWallpaper.idric
-          set +e
           (
             cd shader-backend
             ./build/exec/idris2-glsles \
@@ -82,30 +73,11 @@ jobs:
               src/Example/ConwayWallpaper.idric \
               -o conway-wallpaper
           )
-          edric_status=$?
-          set -e
-          if [ "$edric_status" -eq 0 ]; then
-            echo "shader_frontend=edric" | tee shader-frontend.txt
-          else
-            echo "Edric .idric shader compile failed; trying the same source as ordinary Idris" >&2
-            cp shader/ConwayWallpaper.idric shader-backend/src/Example/ConwayWallpaper.idr
-            (
-              cd shader-backend
-              ./build/exec/idris2-glsles \
-                --cg glsles \
-                --source-dir src \
-                --output-dir generated \
-                src/Example/ConwayWallpaper.idr \
-                -o conway-wallpaper
-            )
-            echo "shader_frontend=idris-fallback" | tee shader-frontend.txt
-          fi
           test -s shader-backend/generated/conway-wallpaper.frag
-          cp shader-backend/generated/conway-wallpaper.frag \
-            app/src/main/assets/conway-wallpaper.frag
+          cp shader-backend/generated/conway-wallpaper.frag app/src/main/assets/conway-wallpaper.frag
           glslangValidator -S frag app/src/main/assets/conway-wallpaper.frag
-          grep -q 'uniform float u_zoom' app/src/main/assets/conway-wallpaper.frag
-          grep -q 'uniform vec2 u_form' app/src/main/assets/conway-wallpaper.frag
+          grep -q 'uniform vec2 u_pan' app/src/main/assets/conway-wallpaper.frag
+          grep -q 'uniform float u_aspect' app/src/main/assets/conway-wallpaper.frag
 
       - uses: actions/setup-java@v4
         with:
@@ -123,7 +95,18 @@ jobs:
           gradle-version: '9.5.0'
 
       - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace :app:assembleDebug 2>&1 | tee android-build.log
+
+      - name: Upload Android build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conway-android-build-log
+          path: android-build.log
+          if-no-files-found: warn
 
       - name: Verify native ABIs and generated shader
         run: |
@@ -137,14 +120,6 @@ jobs:
         with:
           name: conway-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: conway-shader-build
-          path: |
-            app/src/main/assets/conway-wallpaper.frag
-            shader-frontend.txt
           if-no-files-found: error
 
   emulate:
@@ -193,7 +168,7 @@ jobs:
             adb exec-out screencap -p > conway-after-pan.png
             adb logcat -d > conway-phone.log
             adb shell pidof -s org.isomorphisms.conway | tr -d '\r' | grep -Eq '^[0-9]+$'
-            ! grep -Eiq 'shader compilation failed|program link failed|eglInitialize failed|could not choose GLES3 EGL config|could not create EGL surface/context|eglMakeCurrent failed|could not open asset' conway-phone.log
+            ! grep -Eiq 'shader compilation failed|program link failed|eglInitialize failed|could not choose GLES3 EGL config|could not create EGL surface/context|eglMakeCurrent failed|could not open asset|missing pan/aspect' conway-phone.log
             if cmp -s conway-before.png conway-after-pan.png; then
               echo 'one-finger pan did not change frame'
               exit 1

@@ -1,4 +1,3 @@
-#include <android/asset_manager.h>
 #include <android/input.h>
 #include <android/log.h>
 #include <android/native_activity.h>
@@ -10,8 +9,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-#include "gesture.h"
 
 #define LOG_TAG "Conway"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -38,17 +35,15 @@ struct engine {
     GLuint program;
     GLuint vao;
     GLuint vbo;
-    GLint center_location;
-    GLint zoom_location;
-    GLint angle_location;
-    GLint hue_location;
-    GLint saturation_location;
-    GLint form_location;
+    GLint pan_location;
     GLint aspect_location;
 
-    struct conway_view view;
-    struct conway_sample previous_sample;
-    bool has_previous_sample;
+    float pan_x;
+    float pan_y;
+    int32_t pointer_id;
+    float previous_x;
+    float previous_y;
+    bool panning;
     bool dirty;
     bool logged_first_frame;
 };
@@ -157,29 +152,20 @@ static bool create_renderer(struct engine *engine) {
     glDeleteShader(fragment_shader);
     if (engine->program == 0) return false;
 
-    engine->center_location = glGetUniformLocation(engine->program, "u_center");
-    engine->zoom_location = glGetUniformLocation(engine->program, "u_zoom");
-    engine->angle_location = glGetUniformLocation(engine->program, "u_angle");
-    engine->hue_location = glGetUniformLocation(engine->program, "u_hue");
-    engine->saturation_location = glGetUniformLocation(engine->program, "u_saturation");
-    engine->form_location = glGetUniformLocation(engine->program, "u_form");
+    engine->pan_location = glGetUniformLocation(engine->program, "u_pan");
     engine->aspect_location = glGetUniformLocation(engine->program, "u_aspect");
+    if (engine->pan_location < 0 || engine->aspect_location < 0) {
+        LOGE("wallpaper shader is missing pan/aspect uniforms");
+        return false;
+    }
 
     glGenVertexArrays(1, &engine->vao);
     glBindVertexArray(engine->vao);
     glGenBuffers(1, &engine->vbo);
     glBindBuffer(GL_ARRAY_BUFFER, engine->vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(fullscreen_triangle), fullscreen_triangle, GL_STATIC_DRAW);
-    glVertexAttribPointer(
-        0,
-        2,
-        GL_FLOAT,
-        GL_FALSE,
-        2 * (GLsizei)sizeof(GLfloat),
-        (const void *)0
-    );
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * (GLsizei)sizeof(GLfloat), (const void *)0);
     glEnableVertexAttribArray(0);
-
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
@@ -291,25 +277,12 @@ static void update_surface_size(struct engine *engine) {
 }
 
 static void draw_frame(struct engine *engine) {
-    if (
-        engine->display == EGL_NO_DISPLAY ||
-        engine->program == 0 ||
-        engine->width <= 0 ||
-        engine->height <= 0
-    ) {
-        return;
-    }
+    if (engine->display == EGL_NO_DISPLAY || engine->program == 0 || engine->width <= 0 || engine->height <= 0) return;
 
     float aspect = (float)engine->width / (float)engine->height;
     glUseProgram(engine->program);
-    glUniform2f(engine->center_location, engine->view.center_x, engine->view.center_y);
-    glUniform1f(engine->zoom_location, engine->view.zoom);
-    glUniform1f(engine->angle_location, engine->view.angle);
-    glUniform1f(engine->hue_location, engine->view.hue);
-    glUniform1f(engine->saturation_location, engine->view.saturation);
-    glUniform2f(engine->form_location, engine->view.form_x, engine->view.form_y);
+    glUniform2f(engine->pan_location, engine->pan_x, engine->pan_y);
     glUniform1f(engine->aspect_location, aspect);
-
     glBindVertexArray(engine->vao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -326,20 +299,9 @@ static void draw_frame(struct engine *engine) {
     engine->dirty = false;
 }
 
-static void sample_from_event(
-    const AInputEvent *event,
-    int skip_index,
-    struct conway_sample *sample
-) {
-    sample->count = 0;
-    size_t pointer_count = AMotionEvent_getPointerCount(event);
-    for (size_t i = 0; i < pointer_count && sample->count < CONWAY_MAX_POINTERS; ++i) {
-        if ((int)i == skip_index) continue;
-        size_t out = sample->count++;
-        sample->pointers[out].id = AMotionEvent_getPointerId(event, i);
-        sample->pointers[out].x = AMotionEvent_getX(event, i);
-        sample->pointers[out].y = AMotionEvent_getY(event, i);
-    }
+static void stop_pan(struct engine *engine) {
+    engine->panning = false;
+    engine->pointer_id = -1;
 }
 
 static int32_t handle_input(struct android_app *app, AInputEvent *event) {
@@ -351,41 +313,35 @@ static int32_t handle_input(struct android_app *app, AInputEvent *event) {
 
     switch (masked_action) {
         case AMOTION_EVENT_ACTION_DOWN:
-        case AMOTION_EVENT_ACTION_POINTER_DOWN:
-            sample_from_event(event, -1, &engine->previous_sample);
-            engine->has_previous_sample = engine->previous_sample.count > 0;
-            return 1;
-
-        case AMOTION_EVENT_ACTION_MOVE: {
-            struct conway_sample current = {0};
-            sample_from_event(event, -1, &current);
-            if (engine->has_previous_sample) {
-                conway_apply_motion(
-                    &engine->view,
-                    &engine->previous_sample,
-                    &current,
-                    (float)engine->width,
-                    (float)engine->height
-                );
-                engine->dirty = true;
+            if (AMotionEvent_getPointerCount(event) == 1) {
+                engine->pointer_id = AMotionEvent_getPointerId(event, 0);
+                engine->previous_x = AMotionEvent_getX(event, 0);
+                engine->previous_y = AMotionEvent_getY(event, 0);
+                engine->panning = true;
             }
-            engine->previous_sample = current;
-            engine->has_previous_sample = current.count > 0;
             return 1;
-        }
 
-        case AMOTION_EVENT_ACTION_POINTER_UP: {
-            int pointer_index = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
-                >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
-            sample_from_event(event, pointer_index, &engine->previous_sample);
-            engine->has_previous_sample = engine->previous_sample.count > 0;
+        case AMOTION_EVENT_ACTION_MOVE:
+            if (engine->panning && AMotionEvent_getPointerCount(event) == 1 && engine->height > 0) {
+                int32_t id = AMotionEvent_getPointerId(event, 0);
+                if (id == engine->pointer_id) {
+                    float x = AMotionEvent_getX(event, 0);
+                    float y = AMotionEvent_getY(event, 0);
+                    float scale = 4.0f / (float)engine->height;
+                    engine->pan_x -= (x - engine->previous_x) * scale;
+                    engine->pan_y += (y - engine->previous_y) * scale;
+                    engine->previous_x = x;
+                    engine->previous_y = y;
+                    engine->dirty = true;
+                }
+            }
             return 1;
-        }
 
+        case AMOTION_EVENT_ACTION_POINTER_DOWN:
+        case AMOTION_EVENT_ACTION_POINTER_UP:
         case AMOTION_EVENT_ACTION_UP:
         case AMOTION_EVENT_ACTION_CANCEL:
-            engine->has_previous_sample = false;
-            engine->previous_sample.count = 0;
+            stop_pan(engine);
             return 1;
 
         default:
@@ -398,11 +354,10 @@ static void handle_command(struct android_app *app, int32_t command) {
 
     switch (command) {
         case APP_CMD_INIT_WINDOW:
-            if (app->window != NULL && engine->display == EGL_NO_DISPLAY) {
-                initialize_display(engine);
-            }
+            if (app->window != NULL && engine->display == EGL_NO_DISPLAY) initialize_display(engine);
             break;
         case APP_CMD_TERM_WINDOW:
+            stop_pan(engine);
             terminate_display(engine);
             break;
         case APP_CMD_WINDOW_RESIZED:
@@ -424,11 +379,13 @@ void android_main(struct android_app *app) {
         .display = EGL_NO_DISPLAY,
         .surface = EGL_NO_SURFACE,
         .context = EGL_NO_CONTEXT,
+        .pan_x = 0.0f,
+        .pan_y = 0.0f,
+        .pointer_id = -1,
+        .panning = false,
         .dirty = true,
-        .logged_first_frame = false,
-        .has_previous_sample = false
+        .logged_first_frame = false
     };
-    conway_view_reset(&engine.view);
 
     app->userData = &engine;
     app->onAppCmd = handle_command;
@@ -437,16 +394,13 @@ void android_main(struct android_app *app) {
     while (true) {
         int events = 0;
         struct android_poll_source *source = NULL;
-        int timeout = engine.dirty && engine.display != EGL_NO_DISPLAY ? 0 : -1;
+        int timeout = engine.dirty ? 0 : -1;
         int ident = ALooper_pollOnce(timeout, NULL, &events, (void **)&source);
-
         if (ident >= 0 && source != NULL) source->process(app, source);
-
         if (app->destroyRequested != 0) {
             terminate_display(&engine);
             return;
         }
-
         if (engine.dirty) draw_frame(&engine);
     }
 }

@@ -1,79 +1,33 @@
 module Example.ConwayWallpaper
 
-import Shader.Source
+import Data.Vect
+import Shader
 
 %default total
 
-%noinline
-square : Double -> Double
-square value = value * value
+public export
+wallpaper : (SVec 2 Double, SVec 2 Double, SDouble) -> SVec 4 Double
+wallpaper (uv, pan, aspect) =
+  let
+    centered : SVec 2 Double
+    centered = uv - [0.5, 0.5]
 
-%noinline
-palette : Double -> Double -> Double
-palette hue offset =
-  0.5 + 0.5 * cosF (6.283185307179586 * (hue + offset))
+    world : SVec 2 Double
+    world = [index 0 centered * aspect * 4.0 + index 0 pan,
+             index 1 centered * 4.0 + index 1 pan]
 
-%noinline
-line_mask : Double -> Double -> Double
-line_mask distance width =
-  1.0 - smoothstepF width (width + 0.018) distance
+    cell = fract world
+    x = index 0 cell - 0.5
+    y = index 1 cell - 0.5
+    radius = sqrt (x * x + y * y)
+    disc = 1.0 - step 0.34 radius
+    diagonal = 0.5 + 0.5 * sin ((index 0 world + index 1 world) * 3.14159265359)
 
-%export "glsles:fragment|v_ndc=in,u_center=uniform,u_zoom=uniform,u_angle=uniform,u_hue=uniform,u_saturation=uniform,u_form=uniform,u_aspect=uniform"
-conway_wallpaper :
-  SVec 2 -> SVec 2 -> Double -> Double -> Double -> Double -> SVec 2 -> Double -> SVec 4
-conway_wallpaper ndc center zoom angle hue saturation form aspect =
-  let safe_zoom = maxF 0.01 zoom
-      view_x = x ndc * aspect / safe_zoom
-      view_y = y ndc / safe_zoom
-      cosine = cosF angle
-      sine = sinF angle
-      world_x = x center + cosine * view_x - sine * view_y
-      world_y = y center + sine * view_x + cosine * view_y
+    r = 0.08 + disc * (0.72 + 0.12 * diagonal)
+    g = 0.12 + disc * (0.32 + 0.10 * diagonal)
+    b = 0.20 + (1.0 - disc) * (0.34 + 0.10 * diagonal)
+  in [r, g, b, 1.0]
 
-      folded_x = absF (fractF world_x - 0.5)
-      folded_y = absF (fractF world_y - 0.5)
-      fundamental_x = minF folded_x folded_y
-      fundamental_y = maxF folded_x folded_y
-
-      form_x = x form
-      form_y = y form
-      ring_center_x = 0.07 + 0.10 * form_x
-      ring_center_y = 0.28 - 0.09 * form_y
-      ring_radius = 0.10 + 0.09 * form_x
-      ring_distance = absF (
-        sqrtF (
-          square (fundamental_x - ring_center_x) +
-          square (fundamental_y - ring_center_y)
-        ) - ring_radius
-      )
-      diagonal_distance = absF (
-        (fundamental_y - fundamental_x) - (0.08 + 0.14 * form_y)
-      )
-      center_distance = sqrtF (
-        square (fundamental_x - 0.04) +
-        square (fundamental_y - 0.04)
-      )
-
-      ring = line_mask ring_distance 0.018
-      diagonal = line_mask diagonal_distance 0.014
-      center_dot = 1.0 - smoothstepF 0.035 0.055 center_distance
-      ink = maxF ring (maxF diagonal center_dot)
-
-      red0 = palette hue 0.00
-      green0 = palette hue 0.33
-      blue0 = palette hue 0.67
-      red = mixF 0.50 red0 saturation
-      green = mixF 0.50 green0 saturation
-      blue = mixF 0.50 blue0 saturation
-
-      background_red = 0.05 + 0.13 * palette hue 0.17
-      background_green = 0.05 + 0.13 * palette hue 0.50
-      background_blue = 0.05 + 0.13 * palette hue 0.83
-   in vec4
-        (mixF background_red red ink)
-        (mixF background_green green ink)
-        (mixF background_blue blue ink)
-        1.0
-
-main : IO ()
-main = pure ()
+public export
+main : (SVec 2 Double, SVec 2 Double, SDouble) -> SVec 4 Double
+main = wallpaper

@@ -1,25 +1,18 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(conway C)
+project(conway LANGUAGES C)
 
-set(NATIVE_GLUE_DIR "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue")
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_library(native_app_glue STATIC
-    "${NATIVE_GLUE_DIR}/android_native_app_glue.c"
-)
-target_include_directories(native_app_glue PUBLIC "${NATIVE_GLUE_DIR}")
+set(NATIVE_APP_GLUE "${ANDROID_NDK}/sources/android/native_app_glue")
 
-add_library(conway SHARED
+add_library(
+    conway
+    SHARED
     conway.c
-    gesture.c
+    "${NATIVE_APP_GLUE}/android_native_app_glue.c"
 )
-target_compile_features(conway PRIVATE c_std_11)
-target_compile_options(conway PRIVATE -Wall -Wextra -Wpedantic)
-target_link_options(conway PRIVATE -u ANativeActivity_onCreate)
-target_link_libraries(conway
-    native_app_glue
-    android
-    log
-    EGL
-    GLESv3
-    m
-)
+
+target_include_directories(conway PRIVATE "${NATIVE_APP_GLUE}")
+target_compile_options(conway PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_link_libraries(conway android EGL GLESv3 log)
