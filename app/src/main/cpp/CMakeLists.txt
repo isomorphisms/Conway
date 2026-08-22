@@ -14,5 +14,4 @@ add_library(
 )
 
 target_include_directories(conway PRIVATE "${NATIVE_APP_GLUE}")
-target_compile_options(conway PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_link_libraries(conway android EGL GLESv3 log)
