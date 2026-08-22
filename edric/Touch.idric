@@ -1,0 +1,41 @@
+module Conway.Touch
+
+%default total
+
+-- Canonical gesture algebra. The current Android bootstrap mirrors this in C
+-- because Idris 2/Idric does not yet export host-callable C functions. Runtime
+-- coordinates and renderer uniforms are float32; the compiler-facing numerical
+-- primitive inherited from Idris 2 is still named Double.
+
+record Finger where
+  constructor MkFinger
+  id : Int
+  x : Double
+  y : Double
+
+record View where
+  constructor MkView
+  center_x : Double
+  center_y : Double
+  zoom : Double
+  angle : Double
+  hue : Double
+  saturation : Double
+  form_x : Double
+  form_y : Double
+
+choice Gesture one_of
+  no_fingers
+  one_finger Finger
+  two_fingers Finger Finger
+  three_fingers Finger Finger Finger
+
+midpoint : Finger -> Finger -> (Double, Double)
+midpoint a b = ((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+
+distance : Finger -> Finger -> Double
+distance a b =
+  sqrt ((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+
+direction : Finger -> Finger -> Double
+direction a b = atan2 (b.y - a.y) (b.x - a.x)
