@@ -47,3 +47,4 @@ void main() {
   vec4 _idris_t37 = vec4(_idris_t27, _idris_t31, _idris_t36, 1.0);
   _idris_fragColor = _idris_t37;
 }
+
