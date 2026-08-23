@@ -119,20 +119,32 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          cp shader/ConwayWallpaper.idric shader-backend/src/Example/ConwayWallpaper.idric
+          cp shader/ConwayWallpaper.idric shader-backend/src/Example/ConwayWallpaper.idr
           (
             cd shader-backend
             ./build/exec/idris2-glsles \
               --cg glsles \
               --source-dir src \
               --output-dir generated \
-              src/Example/ConwayWallpaper.idric \
+              src/Example/ConwayWallpaper.idr \
               -o conway-wallpaper
           )
           test -s shader-backend/generated/conway-wallpaper.frag
           glslangValidator -S frag shader-backend/generated/conway-wallpaper.frag
           grep -q 'uniform vec2 u_pan' shader-backend/generated/conway-wallpaper.frag
           grep -q 'uniform float u_aspect' shader-backend/generated/conway-wallpaper.frag
+
+      - name: Upload generated wallpaper shader
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conway-generated-wallpaper-shader
+          path: shader-backend/generated/conway-wallpaper.frag
+          if-no-files-found: warn
+
+      - name: Check generated shader matches bundled artifact
+        run: |
+          diff -u app/src/main/assets/conway-wallpaper.frag shader-backend/generated/conway-wallpaper.frag
 
   emulate:
     needs: apk
@@ -181,10 +193,7 @@ jobs:
             adb logcat -d > conway-phone.log
             adb shell pidof -s org.isomorphisms.conway | tr -d '\r' | grep -Eq '^[0-9]+$'
             ! grep -Eiq 'shader compilation failed|program link failed|eglInitialize failed|could not choose GLES3 EGL config|could not create EGL surface/context|eglMakeCurrent failed|could not open asset|missing pan/aspect' conway-phone.log
-            if cmp -s conway-before.png conway-after-pan.png; then
-              echo 'one-finger pan did not change frame'
-              exit 1
-            fi
+            ! cmp -s conway-before.png conway-after-pan.png
 
       - uses: actions/upload-artifact@v4
         if: always()
