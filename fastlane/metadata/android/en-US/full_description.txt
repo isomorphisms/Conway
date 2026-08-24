@@ -1,0 +1,3 @@
+Conway is a native Android mathematical viewer for periodic symmetry wallpaper.
+
+The first release renders one repeating wallpaper full-screen with OpenGL ES. Drag with one finger to pan continuously across the pattern. The wallpaper shader is maintained as Edriç source with a checked GLSL ES artifact used by the Android build.
