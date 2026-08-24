@@ -1,0 +1,23 @@
+module Example.ConwayWallpaper
+
+import Shader.Source
+
+%default total
+
+%export "glsles:fragment|v_ndc=in,u_pan=uniform,u_aspect=uniform"
+wallpaper : SVec 2 -> SVec 2 -> Double -> SVec 4
+wallpaper ndc pan aspect =
+  let worldX = x ndc * aspect * 2.0 + x pan
+      worldY = y ndc * 2.0 + y pan
+      cellX = fractF worldX - 0.5
+      cellY = fractF worldY - 0.5
+      radius = sqrtF (cellX * cellX + cellY * cellY)
+      disc = if radius < 0.34 then 1.0 else 0.0
+      diagonal = 0.5 + 0.5 * sinF ((worldX + worldY) * 3.14159265359)
+      r = 0.08 + disc * (0.72 + 0.12 * diagonal)
+      g = 0.12 + disc * (0.32 + 0.10 * diagonal)
+      b = 0.20 + (1.0 - disc) * (0.34 + 0.10 * diagonal)
+   in vec4 r g b 1.0
+
+main : IO ()
+main = pure ()
