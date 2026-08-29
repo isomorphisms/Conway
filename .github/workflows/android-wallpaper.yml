@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  EDRIC_REF: main
+  EDRIC_REF: 9b0bf7fa8be9483440e6ec0530f3aef3999a8735
   SHADER_BACKEND_REF: 7876b79058d6f59711151a21697369c1cf72df2f
 
 jobs:
