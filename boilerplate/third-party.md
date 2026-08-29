@@ -8,7 +8,7 @@ Books, papers, and other source material discussed or linked by this repository 
 
 ## Edriç-generated shader artifact
 
-`shader/ConwayWallpaper.idric` is the maintained wallpaper shader source. `app/src/main/assets/conway-wallpaper.frag` is the checked-in GLSL ES artifact consumed by Android. Separate CI verifies source/artifact agreement so the F-Droid release build can compile the Android app without downloading a compiler.
+`wallpapers/ConwayWallpaper.idric` is the maintained wallpaper shader source. `boilerplate/android/app/src/main/assets/conway-wallpaper.frag` is the checked-in GLSL ES artifact consumed by Android. Separate CI verifies source/artifact agreement so the F-Droid release build can compile the Android app without downloading a compiler.
 
 ## Platform and toolchain
 

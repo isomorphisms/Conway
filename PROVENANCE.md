@@ -13,7 +13,7 @@ The architectural split is motif construction → affine group action → render
 
 `isomorphisms/Cayley` is a fork of Nathan Carter's `nathancarter/group-explorer`. The upstream Group Explorer README identifies the project as LGPL v3 and credits Ray Ellis with most of the web version and Nathan Carter with the original version and later web work. Material copied from that codebase retains its source history and applicable upstream terms; putting a copy here is not intended to erase attribution or silently relicense inherited work.
 
-The language note and `.pattern` examples are copied here so Conway can evolve independently. Implementation files that remain Cayley-specific are linked from `archive/cayley-pr2/README.md` at the exact snapshot commit.
+The language note and `.pattern` examples are copied here so Conway can evolve independently. Implementation files that remain Cayley-specific are linked from `boilerplate/archive/cayley-pr2/README.md` at the exact snapshot commit.
 
 ## New Conway material
 

@@ -2,7 +2,7 @@
 
 Source snapshot: `isomorphisms/Cayley@778330fdbdfeb595bf1fdd021517a1f5298df243`, PR #2, **Add scriptable symmetry pattern language**.
 
-The language note and examples have been copied into Conway under `docs/` and `examples/`.
+The language note and examples have been copied into Conway under `pattern-language/`.
 
 The larger implementation remains directly inspectable at the exact source commit so its Group Explorer inheritance stays obvious:
 

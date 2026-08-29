@@ -1,12 +1,25 @@
 # Pattern language
 
-`Pattern.html` is a small live editor for repeatable 2D geometry. A `.pattern`
-file is intentionally not JavaScript. `js/PatternLanguage.js` parses it into a
-plain affine-geometry intermediate representation (IR), then the SVG renderer
-draws that IR.
+[`pattern.mjs`](pattern.mjs) is the dependency-free command-line implementation for
+repeatable 2D geometry. A `.pattern` file is intentionally not JavaScript. The
+parser lowers it to plain affine geometry, and the renderer writes SVG.
+
+From the repository root, run a checked-in example with:
+
+```sh
+node pattern-language/pattern.mjs pattern-language/examples/conway-442.pattern conway-442.svg
+```
+
+The earlier `Pattern.html` / `js/PatternLanguage.js` live-editor prototype remains
+identified by the exact Cayley source commit under
+[`../boilerplate/archive/cayley-pr2/`](../boilerplate/archive/cayley-pr2/); it
+is not required to execute the Conway examples.
 
 That separation is the important part: another language can generate the same
-IR without reproducing the group enumeration or rendering code.
+IR without reproducing the group enumeration or rendering code. The current
+language inputs are collected under [`examples/`](examples/); the earlier live
+editor prototype is retained under
+[`../boilerplate/archive/`](../boilerplate/archive/).
 
 ## Why this shape?
 
