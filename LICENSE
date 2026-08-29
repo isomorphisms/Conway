@@ -7,4 +7,4 @@ Conway is distributed in the hope that it will be useful, but WITHOUT ANY WARRAN
 The complete GNU General Public License version 3 is published by the Free Software Foundation at:
 https://www.gnu.org/licenses/gpl-3.0.html
 
-This grant applies only to copyrightable material for which this repository's contributors have authority to grant this license. It does not relicense third-party code, data, artwork, dependencies, or referenced material; see THIRD_PARTY.md and any file-specific notices.
+This grant applies only to copyrightable material for which this repository's contributors have authority to grant this license. It does not relicense third-party code, data, artwork, dependencies, or referenced material; see boilerplate/third-party.md and any file-specific notices.

@@ -4,13 +4,11 @@ on:
   pull_request:
     paths:
       - '.github/workflows/fdroid-build.yml'
-      - 'app/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'fdroid/**'
-      - 'fastlane/**'
+      - 'boilerplate/android/**'
+      - 'boilerplate/fdroid/**'
+      - 'boilerplate/fastlane/**'
       - 'LICENSE'
-      - 'THIRD_PARTY.md'
+      - 'boilerplate/third-party.md'
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -41,11 +39,11 @@ jobs:
           gradle-version: '9.5.0'
 
       - name: Build unsigned release APK
-        run: gradle --no-daemon :app:assembleRelease
+        run: gradle -p boilerplate/android --no-daemon :app:assembleRelease
 
       - name: Verify F-Droid release output
         run: |
-          apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          apk=boilerplate/android/app/build/outputs/apk/release/app-release-unsigned.apk
           test -s "$apk"
           unzip -t "$apk"
           unzip -Z1 "$apk" > "$RUNNER_TEMP/conway-release-files.txt"
@@ -59,5 +57,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: conway-fdroid-unsigned
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: boilerplate/android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error

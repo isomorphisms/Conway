@@ -1,26 +1,39 @@
 # Conway
 
-Experimental language and rendering playground for planar symmetry, Conway orbifold notation, and patterned geometry.
+A pattern language for planar symmetry, with rendered wallpapers in Conway orbifold notation.
 
-This repository starts by separating material that previously lived inside the Cayley / Group Explorer experiment:
+- **[Pattern language](pattern-language/)** — the language draft, examples, and mathematical references
+- **[Wallpapers](wallpapers/)** — the rendered SVGs and the Idriç wallpaper source
 
-- language and parser prototypes
-- `.pattern` examples
-- design notes
-- a gallery of pattern renders
-- rights-checked references
+## Wallpapers
 
-## Start here
+| `o` | `2222` |
+| --- | --- |
+| [![o wallpaper](wallpapers/o.svg)](wallpapers/o.svg) | [![2222 wallpaper](wallpapers/2222.svg)](wallpapers/2222.svg) |
+| `333` | `*333` |
+| [![333 wallpaper](wallpapers/333.svg)](wallpapers/333.svg) | [![star 333 wallpaper](wallpapers/star-333.svg)](wallpapers/star-333.svg) |
+| `442` | `*442` |
+| [![442 wallpaper](wallpapers/442.svg)](wallpapers/442.svg) | [![star 442 wallpaper](wallpapers/star-442.svg)](wallpapers/star-442.svg) |
+| `632` | `*632` |
+| [![632 wallpaper](wallpapers/632.svg)](wallpapers/632.svg) | [![star 632 wallpaper](wallpapers/star-632.svg)](wallpapers/star-632.svg) |
 
-- `docs/language-draft.md` — current language draft
-- `examples/` — small scripts
-- `gallery/` — pattern images and reproducible SVG examples
-- `archive/cayley-pr2/` — provenance and design snapshot of the original Cayley prototype
-- `PROVENANCE.md` — where copied material came from
-- `references/README.md` — books and other source material, with redistribution status
+The language separates motif construction, symmetry-group action, and rendering. Conway symbols compile to ordinary affine isometries instead of hiding special cases in the renderer.
 
-The language is intentionally split into motif construction, group action, and rendering. Conway orbifold symbols are shorthand that compile to ordinary affine isometries rather than renderer-specific magic.
+## Run the pattern examples
 
-## Licensing status
+The `.pattern` examples are executable with Node.js 22 or newer and need no npm dependencies:
 
-No new repository-wide license is asserted by this bootstrap. Material copied from Cayley / Group Explorer retains its existing provenance and applicable license. Third-party books or articles are copied only when redistribution permission is explicit; otherwise this repository records a reference instead of importing the text.
+```sh
+node pattern-language/pattern.mjs pattern-language/examples/conway-442.pattern conway-442.svg
+node pattern-language/pattern.mjs pattern-language/examples/calegari-tracks.pattern > calegari-tracks.svg
+```
+
+Run the parser, transform, renderer, and all-example checks with:
+
+```sh
+node --test pattern-language/tests/pattern.test.mjs
+```
+
+CI runs the same tests whenever the language, runner, or examples change.
+
+The Android, F-Droid, Fastlane, build, migration, and archived prototype material is collected under [`boilerplate/`](boilerplate/). Source history and licensing are recorded in [`PROVENANCE.md`](PROVENANCE.md), [`LICENSE`](LICENSE), and [`boilerplate/third-party.md`](boilerplate/third-party.md).
